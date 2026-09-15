@@ -79,12 +79,15 @@ public struct PivotTable: Hashable, Sendable {
     public var seriesTitle: String
     public var columns: [Period]
     public var rows: [PivotRow]
+    /// Vrai si au moins une valeur LY a été estimée depuis y/y (lignes sans LY dans le fichier).
+    public var usesDerivedLastYear: Bool
 
-    public init(metric: Metric, seriesTitle: String, columns: [Period], rows: [PivotRow]) {
+    public init(metric: Metric, seriesTitle: String, columns: [Period], rows: [PivotRow], usesDerivedLastYear: Bool = false) {
         self.metric = metric
         self.seriesTitle = seriesTitle
         self.columns = columns
         self.rows = rows
+        self.usesDerivedLastYear = usesDerivedLastYear
     }
 
     public static let empty = PivotTable(metric: .nbl, seriesTitle: "", columns: [], rows: [])
@@ -186,14 +189,16 @@ public enum PivotEngine {
         for report in reports {
             for period in columns {
                 for contribution in contributions(of: report, series: query.series, period: period, includeTotalMember: query.includeTotalMember) {
-                    sums[contribution.key, default: [:]][period.id, default: Sums()].add(nbl: contribution.nbl, ly: contribution.ly)
+                    sums[contribution.key, default: [:]][period.id, default: Sums()]
+                        .add(nbl: contribution.nbl, ly: contribution.ly, derived: contribution.derivedLY)
                 }
                 let total = reportTotal(report, period: period)
-                scope[period.id, default: Sums()].add(nbl: total.nbl, ly: total.ly)
+                scope[period.id, default: Sums()].add(nbl: total.nbl, ly: total.ly, derived: total.derivedLY)
             }
         }
 
         var rows: [PivotRow] = []
+        var usesDerivedLastYear = false
         for option in options {
             if let keys = query.seriesKeys, !keys.contains(option.id) { continue }
             var values: [String: Double] = [:]
@@ -204,9 +209,12 @@ public enum PivotEngine {
                 let periodScope = scope[period.id]?.nbl
                 if let value = metricValue(cell, metric: query.metric, scope: periodScope) {
                     values[period.id] = value
+                    if cell.derivedLY && (query.metric == .ly || query.metric == .yoy) {
+                        usesDerivedLastYear = true
+                    }
                 }
-                rowSums.add(nbl: cell.nbl, ly: cell.ly)
-                scopeSums.add(nbl: periodScope, ly: nil)
+                rowSums.add(nbl: cell.nbl, ly: cell.ly, derived: cell.derivedLY)
+                scopeSums.add(nbl: periodScope, ly: nil, derived: false)
             }
             let total = metricValue(rowSums, metric: query.metric, scope: scopeSums.nbl)
             rows.append(PivotRow(id: option.id, label: option.label, values: values, total: total, isTotal: option.isTotal))
@@ -216,7 +224,8 @@ public enum PivotEngine {
             metric: query.metric,
             seriesTitle: seriesTitle(reports: reports, series: query.series),
             columns: columns,
-            rows: rows
+            rows: rows,
+            usesDerivedLastYear: usesDerivedLastYear
         )
     }
 
@@ -225,10 +234,15 @@ public enum PivotEngine {
     struct Sums: Hashable {
         var nbl: Double?
         var ly: Double?
+        /// Vrai si une partie de `ly` provient d'une estimation (NBL / (1 + y/y)).
+        var derivedLY = false
 
-        mutating func add(nbl n: Double?, ly l: Double?) {
+        mutating func add(nbl n: Double?, ly l: Double?, derived: Bool = false) {
             if let n = n { nbl = (nbl ?? 0) + n }
-            if let l = l { ly = (ly ?? 0) + l }
+            if let l = l {
+                ly = (ly ?? 0) + l
+                if derived { derivedLY = true }
+            }
         }
     }
 
@@ -236,6 +250,7 @@ public enum PivotEngine {
         var key: String
         var nbl: Double?
         var ly: Double?
+        var derivedLY: Bool
     }
 
     static func metricValue(_ sums: Sums, metric: Metric, scope: Double?) -> Double? {
@@ -257,12 +272,12 @@ public enum PivotEngine {
     static func reportTotal(_ report: Report, period: Period) -> Sums {
         var sums = Sums()
         if let total = report.totalMember {
-            sums.add(nbl: report.value(member: total, metric: .nbl, period: period),
-                     ly: report.value(member: total, metric: .ly, period: period))
+            let ly = report.lastYear(member: total, period: period)
+            sums.add(nbl: report.value(member: total, metric: .nbl, period: period), ly: ly.value, derived: ly.isDerived)
         } else {
             for member in report.leafMembers {
-                sums.add(nbl: report.value(member: member, metric: .nbl, period: period),
-                         ly: report.value(member: member, metric: .ly, period: period))
+                let ly = report.lastYear(member: member, period: period)
+                sums.add(nbl: report.value(member: member, metric: .nbl, period: period), ly: ly.value, derived: ly.isDerived)
             }
         }
         return sums
@@ -274,16 +289,18 @@ public enum PivotEngine {
             var result: [Contribution] = []
             for member in report.members {
                 if !includeTotalMember && Report.isTotalMember(member) { continue }
+                let ly = report.lastYear(member: member, period: period)
                 result.append(Contribution(
                     key: member,
                     nbl: report.value(member: member, metric: .nbl, period: period),
-                    ly: report.value(member: member, metric: .ly, period: period)
+                    ly: ly.value,
+                    derivedLY: ly.isDerived
                 ))
             }
             return result
         default:
             let total = reportTotal(report, period: period)
-            return [Contribution(key: attributeKey(report, series: series), nbl: total.nbl, ly: total.ly)]
+            return [Contribution(key: attributeKey(report, series: series), nbl: total.nbl, ly: total.ly, derivedLY: total.derivedLY)]
         }
     }
 

@@ -47,6 +47,13 @@ final class PivotEngineTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(compared, 90)
+        // Les membres n'ont pas de ligne LY : elle est estimée depuis y/y, et signalée.
+        XCTAssertTrue(growth.usesDerivedLastYear)
+        XCTAssertFalse(mix.usesDerivedLastYear)
+        let ly = PivotEngine.pivot(reports: [report], query: PivotQuery(metric: .ly))
+        XCTAssertEqual(try XCTUnwrap(ly.row(id: "TOTAL")?.value(for: Fixtures.week(1))), 240)
+        XCTAssertEqual(try XCTUnwrap(ly.row(id: "RP - Retail POS")?.value(for: Fixtures.week(1))), 210.0 / 1.06, accuracy: 1e-9)
+        XCTAssertNil(ly.row(id: "RK - RETAIL KIOSK")?.value(for: Fixtures.week(1)))
         // Le TOTAL représente 100 % du périmètre.
         XCTAssertEqual(try XCTUnwrap(mix.row(id: "TOTAL")?.value(for: Fixtures.week(1))), 1, accuracy: 1e-9)
         // Le total de ligne d'un ratio est recalculé sur les sommes : y/y du trimestre.

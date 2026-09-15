@@ -48,6 +48,19 @@ final class GoldReportParserTests: XCTestCase {
         XCTAssertEqual(sum, 4595)
     }
 
+    func testLastYearEstimate() throws {
+        let report = try Fixtures.subChannelReport()
+        let w1 = Fixtures.week(1)
+        let total = report.lastYear(member: "TOTAL", period: w1)
+        XCTAssertEqual(total.value, 240)
+        XCTAssertFalse(total.isDerived)
+        let pos = report.lastYear(member: "RP - Retail POS", period: w1)
+        XCTAssertTrue(pos.isDerived)
+        XCTAssertEqual(try XCTUnwrap(pos.value), 210.0 / 1.06, accuracy: 1e-9)
+        let kiosk = report.lastYear(member: "RK - RETAIL KIOSK", period: w1)
+        XCTAssertNil(kiosk.value)
+    }
+
     func testProductsWorkbookSkipsNotesSheet() throws {
         let report = try Fixtures.productsReport()
         XCTAssertEqual(report.sheetName, "Product")

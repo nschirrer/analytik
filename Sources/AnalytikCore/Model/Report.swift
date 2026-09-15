@@ -143,6 +143,20 @@ public struct Report: Identifiable, Equatable, Sendable {
         periods.filter { $0.granularity == granularity }
     }
 
+    /// LY du fichier, sinon estimé à partir de NBL et y/y (`LY = NBL / (1 + y/y)`).
+    ///
+    /// Les exports GOLD ne fournissent LY que pour la ligne TOTAL ; pour les autres membres
+    /// l'estimation permet de recalculer y/y sur des sommes (semaines, rapports).
+    public func lastYear(member: String, period: Period) -> (value: Double?, isDerived: Bool) {
+        if let ly = value(member: member, metric: .ly, period: period) {
+            return (ly, false)
+        }
+        guard let nbl = value(member: member, metric: .nbl, period: period),
+              let yoy = value(member: member, metric: .yoy, period: period),
+              yoy > -1 else { return (nil, false) }
+        return (nbl / (1 + yoy), true)
+    }
+
     public static func == (lhs: Report, rhs: Report) -> Bool {
         lhs.id == rhs.id && lhs.filePath == rhs.filePath && lhs.sheetName == rhs.sheetName
     }
