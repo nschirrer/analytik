@@ -190,10 +190,10 @@ public enum PivotEngine {
             for period in columns {
                 for contribution in contributions(of: report, series: query.series, period: period, includeTotalMember: query.includeTotalMember) {
                     sums[contribution.key, default: [:]][period.id, default: Sums()]
-                        .add(nbl: contribution.nbl, ly: contribution.ly, derived: contribution.derivedLY)
+                        .add(nbl: contribution.nbl, ly: contribution.ly, derived: contribution.derivedLY, growth: contribution.growth)
                 }
                 let total = reportTotal(report, period: period)
-                scope[period.id, default: Sums()].add(nbl: total.nbl, ly: total.ly, derived: total.derivedLY)
+                scope[period.id, default: Sums()].add(total)
             }
         }
 
@@ -213,8 +213,8 @@ public enum PivotEngine {
                         usesDerivedLastYear = true
                     }
                 }
-                rowSums.add(nbl: cell.nbl, ly: cell.ly, derived: cell.derivedLY)
-                scopeSums.add(nbl: periodScope, ly: nil, derived: false)
+                rowSums.add(cell)
+                scopeSums.add(nbl: periodScope, ly: nil)
             }
             let total = metricValue(rowSums, metric: query.metric, scope: scopeSums.nbl)
             rows.append(PivotRow(id: option.id, label: option.label, values: values, total: total, isTotal: option.isTotal))
@@ -236,12 +236,31 @@ public enum PivotEngine {
         var ly: Double?
         /// Vrai si une partie de `ly` provient d'une estimation (NBL / (1 + y/y)).
         var derivedLY = false
+        /// y/y tel qu'écrit dans le fichier, utilisable seulement si une seule contribution a été agrégée.
+        var fileGrowth: Double?
+        var contributions = 0
 
-        mutating func add(nbl n: Double?, ly l: Double?, derived: Bool = false) {
+        mutating func add(nbl n: Double?, ly l: Double?, derived: Bool = false, growth: Double? = nil) {
             if let n = n { nbl = (nbl ?? 0) + n }
             if let l = l {
                 ly = (ly ?? 0) + l
                 if derived { derivedLY = true }
+            }
+            if n != nil || l != nil || growth != nil {
+                contributions += 1
+                fileGrowth = growth
+            }
+        }
+
+        mutating func add(_ other: Sums) {
+            if let n = other.nbl { nbl = (nbl ?? 0) + n }
+            if let l = other.ly {
+                ly = (ly ?? 0) + l
+                if other.derivedLY { derivedLY = true }
+            }
+            if other.contributions > 0 {
+                contributions += other.contributions
+                fileGrowth = other.contributions == 1 ? other.fileGrowth : nil
             }
         }
     }
@@ -251,6 +270,7 @@ public enum PivotEngine {
         var nbl: Double?
         var ly: Double?
         var derivedLY: Bool
+        var growth: Double?
     }
 
     static func metricValue(_ sums: Sums, metric: Metric, scope: Double?) -> Double? {
@@ -260,8 +280,11 @@ public enum PivotEngine {
         case .ly:
             return sums.ly
         case .yoy:
-            guard let n = sums.nbl, let l = sums.ly, l != 0 else { return nil }
-            return n / l - 1
+            if let n = sums.nbl, let l = sums.ly, l != 0 {
+                return n / l - 1
+            }
+            // Une seule contribution (une cellule du fichier) : on garde le y/y écrit dans le fichier.
+            return sums.contributions == 1 ? sums.fileGrowth : nil
         case .mix:
             guard let n = sums.nbl, let s = scope, s != 0 else { return nil }
             return n / s
@@ -273,11 +296,21 @@ public enum PivotEngine {
         var sums = Sums()
         if let total = report.totalMember {
             let ly = report.lastYear(member: total, period: period)
-            sums.add(nbl: report.value(member: total, metric: .nbl, period: period), ly: ly.value, derived: ly.isDerived)
+            sums.add(
+                nbl: report.value(member: total, metric: .nbl, period: period),
+                ly: ly.value,
+                derived: ly.isDerived,
+                growth: report.value(member: total, metric: .yoy, period: period)
+            )
         } else {
             for member in report.leafMembers {
                 let ly = report.lastYear(member: member, period: period)
-                sums.add(nbl: report.value(member: member, metric: .nbl, period: period), ly: ly.value, derived: ly.isDerived)
+                sums.add(
+                    nbl: report.value(member: member, metric: .nbl, period: period),
+                    ly: ly.value,
+                    derived: ly.isDerived,
+                    growth: report.value(member: member, metric: .yoy, period: period)
+                )
             }
         }
         return sums
@@ -294,13 +327,20 @@ public enum PivotEngine {
                     key: member,
                     nbl: report.value(member: member, metric: .nbl, period: period),
                     ly: ly.value,
-                    derivedLY: ly.isDerived
+                    derivedLY: ly.isDerived,
+                    growth: report.value(member: member, metric: .yoy, period: period)
                 ))
             }
             return result
         default:
             let total = reportTotal(report, period: period)
-            return [Contribution(key: attributeKey(report, series: series), nbl: total.nbl, ly: total.ly, derivedLY: total.derivedLY)]
+            return [Contribution(
+                key: attributeKey(report, series: series),
+                nbl: total.nbl,
+                ly: total.ly,
+                derivedLY: total.derivedLY,
+                growth: total.contributions == 1 ? total.fileGrowth : nil
+            )]
         }
     }
 

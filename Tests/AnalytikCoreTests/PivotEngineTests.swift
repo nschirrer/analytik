@@ -54,6 +54,10 @@ final class PivotEngineTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(ly.row(id: "TOTAL")?.value(for: Fixtures.week(1))), 240)
         XCTAssertEqual(try XCTUnwrap(ly.row(id: "RP - Retail POS")?.value(for: Fixtures.week(1))), 210.0 / 1.06, accuracy: 1e-9)
         XCTAssertNil(ly.row(id: "RK - RETAIL KIOSK")?.value(for: Fixtures.week(1)))
+        // Cellule non dérivable (NBL 0, y/y = −100 %) : le y/y du fichier est conservé pour une cellule seule…
+        XCTAssertEqual(growth.row(id: "RK - RETAIL KIOSK")?.value(for: Fixtures.week(13)), -1)
+        // … mais pas pour un total de ligne qui agrège plusieurs semaines sans LY.
+        XCTAssertNil(growth.row(id: "RK - RETAIL KIOSK")?.total)
         // Le TOTAL représente 100 % du périmètre.
         XCTAssertEqual(try XCTUnwrap(mix.row(id: "TOTAL")?.value(for: Fixtures.week(1))), 1, accuracy: 1e-9)
         // Le total de ligne d'un ratio est recalculé sur les sommes : y/y du trimestre.
