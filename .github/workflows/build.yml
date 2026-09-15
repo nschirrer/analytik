@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Version à publier (ex. 0.1.0) : crée le tag vX.Y.Z et la release GitHub. Laisser vide pour un simple build."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -42,14 +47,28 @@ jobs:
       - name: Tests unitaires
         run: swift test
 
-      - name: Empaqueter Analytik.app
+      - name: Déterminer la version
+        id: version
         env:
           REF_NAME: ${{ github.ref_name }}
           IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
-          BUILD_NUMBER: ${{ github.run_number }}
+          RELEASE_INPUT: ${{ github.event.inputs.release_version }}
         run: |
-          if [ "$IS_TAG" = "true" ]; then VERSION="${REF_NAME#v}"; else VERSION="0.0.0"; fi
-          VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" bash scripts/bundle.sh
+          if [ "$IS_TAG" = "true" ]; then
+            VERSION="${REF_NAME#v}"
+          elif [ -n "$RELEASE_INPUT" ]; then
+            VERSION="${RELEASE_INPUT#v}"
+          else
+            VERSION="0.0.0"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version : $VERSION"
+
+      - name: Empaqueter Analytik.app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" bash scripts/bundle.sh
 
       - name: Publier l'artefact
         uses: actions/upload-artifact@v4
@@ -66,10 +85,18 @@ jobs:
           if-no-files-found: warn
 
       - name: Créer la release GitHub
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_version != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "Analytik $GITHUB_REF_NAME" \
-            --generate-notes
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "La release $TAG existe déjà : envoi du zip."
+            gh release upload "$TAG" dist/*.zip --clobber
+          else
+            gh release create "$TAG" dist/*.zip \
+              --target "$GITHUB_SHA" \
+              --title "Analytik $TAG" \
+              --generate-notes
+          fi
