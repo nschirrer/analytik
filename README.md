@@ -58,9 +58,12 @@ Le dépôt ne contient aucune donnée réelle : les fixtures de test sont synth�
 - Ouvrir dans Xcode 16 ou plus : Fichier › Ouvrir… › `Package.swift`, puis lancer le schéma `Analytik`.
 - En ligne de commande (macOS) : `swift build`, `swift test`, puis `bash scripts/bundle.sh` pour produire `dist/Analytik.app` et son zip.
 - Structure : `Sources/AnalytikCore` (lecture des classeurs, parseur GOLD, moteur de pivot et de comparaison, export CSV, client Claude ; sans dépendance à l'interface), `Sources/Analytik` (app SwiftUI), `Tests/AnalytikCoreTests`.
-- Intégration continue : à chaque push, GitHub Actions compile sur macOS, exécute les tests et publie l'artefact `Analytik-macOS`. Un tag `vX.Y.Z` crée une release avec le zip :
+- Intégration continue : à chaque push, GitHub Actions compile sur macOS, exécute les tests et publie l'artefact `Analytik-macOS`. Pour publier une release, deux possibilités :
+  - pousser un tag `vX.Y.Z` :
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+    ```bash
+    git tag v0.2.0
+    git push origin v0.2.0
+    ```
+
+  - ou lancer le workflow « Build » manuellement (onglet Actions › Build › Run workflow) en indiquant la version : le tag et la release sont créés automatiquement.
