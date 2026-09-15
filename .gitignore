@@ -1,0 +1,16 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+
+# Bundle output
+dist/
+
+# macOS
+.DS_Store
+
+# Never commit real GOLD exports (internal sales data). Test fixtures live in Tests/.
+/*.xlsx
+/exports/
