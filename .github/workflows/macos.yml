@@ -1,0 +1,50 @@
+name: macOS build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versions
+        run: |
+          sw_vers
+          swift --version
+
+      - name: Tests (logique métier)
+        run: swift test
+
+      - name: Construction de l'app
+        run: ./scripts/build-app.sh
+
+      - name: Captures d'écran
+        continue-on-error: true
+        run: |
+          mkdir -p build/screenshots
+          ./build/Metrixator.app/Contents/MacOS/Metrixator --snapshot "$PWD/build/screenshots" &
+          PID=$!
+          for i in $(seq 1 150); do
+            if ! kill -0 $PID 2>/dev/null; then break; fi
+            sleep 1
+          done
+          kill $PID 2>/dev/null || true
+          ls -la build/screenshots
+
+      - name: Archive de l'app
+        run: cd build && ditto -c -k --keepParent Metrixator.app Metrixator.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: captures
+          path: build/screenshots
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Metrixator-app
+          path: build/Metrixator.zip

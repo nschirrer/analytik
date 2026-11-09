@@ -63,7 +63,13 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(L10n.weekLong(w), "S6 FY27 · 1–7 nov.")
         let w2 = cal.week(containing: Day(2026, 9, 28))
         XCTAssertEqual(L10n.range(w2.start, w2.end), "27 sept. – 3 oct.")
+        XCTAssertEqual(L10n.periodCaption(.l4w, reference: w, calendar: cal), "S3–6 · 11 oct. – 7 nov.")
+        XCTAssertEqual(L10n.periodCaption(.qtd, reference: w, calendar: cal), "T1 FY27 · à S6")
+        XCTAssertEqual(L10n.periodCaption(.ytd, reference: w, calendar: cal), "FY27 · à S6")
+        let first = cal.week(fiscalYear: 2027, index: 2)!
+        XCTAssertEqual(L10n.periodCaption(.l4w, reference: first, calendar: cal), "S51 FY26–S2 FY27 · 13 sept. – 10 oct.")
         L10n.current = .en
         XCTAssertEqual(L10n.weekLong(w), "W6 FY27 · Nov 1–7")
+        XCTAssertEqual(L10n.periodCaption(.qtd, reference: w, calendar: cal), "Q1 FY27 · to W6")
     }
 }

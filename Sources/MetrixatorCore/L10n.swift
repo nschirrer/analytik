@@ -75,4 +75,23 @@ public enum L10n {
     public static func weekLong(_ w: FiscalWeek) -> String {
         "\(weekShort(w)) · \(range(w.start, w.end))"
     }
+
+    /// Légende d'une période sur les tuiles : « S6 FY27 · 1–7 nov. », « S3–S6 · 11 oct. – 7 nov. »,
+    /// « T1 FY27 · à S6 », « FY27 · à S6 ».
+    public static func periodCaption(_ kind: PeriodKind, reference ref: FiscalWeek, calendar cal: FiscalCalendar) -> String {
+        switch kind {
+        case .pwk:
+            return weekLong(ref)
+        case .l4w:
+            let first = cal.week(offset: -3, from: ref)
+            let label = first.fiscalYear == ref.fiscalYear
+                ? "\(tr("S", "W"))\(first.index)–\(ref.index)"
+                : "\(weekShort(first))–\(weekShort(ref))"
+            return "\(label) · \(range(first.start, ref.end))"
+        case .qtd:
+            return "\(tr("T", "Q"))\(ref.quarter) \(fiscalYear(ref.fiscalYear)) · \(tr("à S", "to W"))\(ref.index)"
+        case .ytd:
+            return "\(fiscalYear(ref.fiscalYear)) · \(tr("à S", "to W"))\(ref.index)"
+        }
+    }
 }
