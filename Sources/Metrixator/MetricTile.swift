@@ -198,8 +198,7 @@ struct MetricChart: View {
                 if let v = p.value {
                     AreaMark(x: .value("Semaine", p.position),
                              yStart: .value("Base", base),
-                             yEnd: .value("Valeur", v),
-                             series: .value("Série", "N"))
+                             yEnd: .value("Valeur", v))
                         .foregroundStyle(LinearGradient(colors: [color.opacity(compact ? 0.28 : 0.22), color.opacity(0.02)],
                                                         startPoint: .top, endPoint: .bottom))
                         .interpolationMethod(.monotone)
