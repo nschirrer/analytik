@@ -19,8 +19,15 @@ struct MetricListView: View {
                         .buttonStyle(.borderedProminent)
                 }
             } else {
-                List {
-                    Section {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(tr("\(store.metrics.count) résultats — glissez pour changer l'ordre du tableau de synthèse",
+                            "\(store.metrics.count) results — drag to reorder the dashboard"))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 6)
+                        .padding(.bottom, 4)
+                    List {
                         ForEach(store.metrics) { metric in
                             NavigationLink(value: metric.id) {
                                 MetricRow(metric: metric)
@@ -30,13 +37,10 @@ struct MetricListView: View {
                         .onMove { offsets, destination in
                             store.moveMetrics(fromOffsets: offsets, toOffset: destination)
                         }
-                    } header: {
-                        Text(tr("\(store.metrics.count) résultats — glissez pour changer l'ordre du tableau de synthèse",
-                                "\(store.metrics.count) results — drag to reorder the dashboard"))
                     }
+                    .listStyle(.inset(alternatesRowBackgrounds: true))
+                    .scrollContentBackground(.hidden)
                 }
-                .listStyle(.inset(alternatesRowBackgrounds: true))
-                .scrollContentBackground(.hidden)
             }
         }
         .screenBackground()
