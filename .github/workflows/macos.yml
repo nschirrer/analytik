@@ -8,6 +8,9 @@ concurrency:
   group: macos-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -38,6 +41,20 @@ jobs:
           done
           kill $PID 2>/dev/null || true
           ls -la build/screenshots
+
+      - name: Publier les captures dans docs/captures
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: |
+          mkdir -p docs/captures
+          rm -f docs/captures/*.png
+          cp build/screenshots/*.png docs/captures/ 2>/dev/null || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/captures
+          git diff --cached --quiet && exit 0
+          git commit -m "Captures d'écran générées par la CI"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Archive de l'app
         run: cd build && ditto -c -k --keepParent Metrixator.app Metrixator.zip

@@ -47,13 +47,13 @@ struct DashboardView: View {
         }
         .background(Theme.canvas)
         .navigationTitle(tr("Tableau de synthèse", "Dashboard"))
-        .toolbar { toolbar(reference: reference) }
+        .toolbar { dashboardToolbar(reference: reference) }
     }
 }
 
 extension DashboardView {
     @ToolbarContentBuilder
-    func toolbar(reference: FiscalWeek) -> some ToolbarContent {
+    func dashboardToolbar(reference: FiscalWeek) -> some ToolbarContent {
         ToolbarItem(placement: .principal) {
             Picker(tr("Période", "Period"), selection: Binding(get: { store.settings.period }, set: { store.setPeriod($0) })) {
                 ForEach(PeriodKind.allCases) { p in
