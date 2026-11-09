@@ -41,11 +41,13 @@ struct DashboardView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    .padding(.bottom, 20)
                 }
             }
         }
-        .background(Theme.canvas)
+        .screenBackground()
         .navigationTitle(tr("Tableau de synthèse", "Dashboard"))
         .toolbar { dashboardToolbar(reference: reference) }
     }

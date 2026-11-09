@@ -36,8 +36,10 @@ struct MetricListView: View {
                     }
                 }
                 .listStyle(.inset(alternatesRowBackgrounds: true))
+                .scrollContentBackground(.hidden)
             }
         }
+        .screenBackground()
         .navigationTitle(tr("Résultats suivis", "Tracked results"))
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {

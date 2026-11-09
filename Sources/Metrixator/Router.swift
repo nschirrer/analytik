@@ -63,6 +63,35 @@ enum Theme {
     }
 }
 
+/// Accès à la fenêtre AppKit : retire le trait sous la barre d'outils pour que la colonne
+/// de droite forme une seule surface, alignée avec la barre latérale.
+struct WindowConfigurator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { configure(view.window) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { configure(nsView.window) }
+    }
+
+    private func configure(_ window: NSWindow?) {
+        guard let window else { return }
+        window.titlebarSeparatorStyle = .none
+    }
+}
+
+extension View {
+    /// Fond de l'écran prolongé sous la barre d'outils (même couleur, pas de bande distincte).
+    func screenBackground() -> some View {
+        self
+            .background(Theme.canvas)
+            .toolbarBackground(Theme.canvas, for: .windowToolbar)
+            .toolbarBackground(.visible, for: .windowToolbar)
+    }
+}
+
 /// Carte arrondie façon Numerics.
 struct CardBackground: ViewModifier {
     var padding: CGFloat = 16

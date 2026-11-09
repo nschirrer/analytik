@@ -39,9 +39,11 @@ struct MetricDetailView: View {
                     chartCard(metric, reference: reference)
                     historyCard(metric)
                 }
-                .padding(24)
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 24)
             }
-            .background(Theme.canvas)
+            .screenBackground()
             .navigationTitle(metric.name)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
@@ -101,7 +103,7 @@ struct MetricDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(tr("Synthèse au \(L10n.weekLong(reference))", "Summary as of \(L10n.weekLong(reference))"))
                 .font(.title3.weight(.semibold))
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)], spacing: 12) {
                 ForEach(PeriodKind.allCases) { kind in
                     let s = Analytics.summary(of: m, period: kind, reference: reference, calendar: store.calendar)
                     VStack(alignment: .leading, spacing: 6) {
@@ -125,6 +127,14 @@ struct MetricDetailView: View {
                         if let label = Analytics.previousLabel(for: kind) {
                             ChangeBadge(change: s.change, inPoints: m.kind.comparesInPoints, higherIsBetter: m.higherIsBetter,
                                         label: label, font: .caption)
+                        } else {
+                            // YTD : la valeur N-1 remplace la comparaison avec la période précédente
+                            // (même hauteur de carte que les autres).
+                            Text(tr("N-1 : ", "LY: ") + NumberFormat.valueWithUnit(s.lastYearValue, unit: m.unit, compact: true))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .lineLimit(1)
                         }
                         Text(L10n.periodCaption(kind, reference: reference, calendar: store.calendar))
                             .font(.caption)
@@ -363,11 +373,17 @@ struct EntryForm: View {
         .onAppear { selectDefaultWeek() }
     }
 
-    /// Par défaut : la semaine terminée la plus récente qui n'a pas encore de valeur.
+    /// Par défaut : la semaine terminée la plus récente sans valeur, sans remonter avant le début
+    /// de l'historique du résultat ; si tout est saisi, la dernière semaine terminée (PWK).
     private func selectDefaultWeek() {
         guard week == Day(1970, 1, 1) else { return }
-        let weeks = store.calendar.trailingWeeks(104, endingAt: store.previousWeek).reversed()
-        week = weeks.first { metric.entry(for: $0.start) == nil }?.start ?? store.previousWeek.start
+        week = EntryForm.defaultWeek(for: metric, calendar: store.calendar, lastWeek: store.previousWeek)
+    }
+
+    static func defaultWeek(for metric: Metric, calendar: FiscalCalendar, lastWeek: FiscalWeek) -> Day {
+        let earliest = metric.entries.first?.week ?? lastWeek.start
+        let candidates = calendar.trailingWeeks(104, endingAt: lastWeek).reversed().filter { $0.start >= earliest }
+        return candidates.first { metric.entry(for: $0.start) == nil }?.start ?? lastWeek.start
     }
 
     private func submit(_ validation: EntryValidation) {
@@ -381,8 +397,7 @@ struct EntryForm: View {
             valueText = ""
             yoyText = ""
             if let next = store.metric(metric.id) {
-                let weeks = store.calendar.trailingWeeks(104, endingAt: store.previousWeek).reversed()
-                if let free = weeks.first(where: { next.entry(for: $0.start) == nil }) { week = free.start }
+                week = EntryForm.defaultWeek(for: next, calendar: store.calendar, lastWeek: store.previousWeek)
             }
         } catch let error as MetrixError {
             submitError = error.message

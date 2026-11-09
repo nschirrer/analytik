@@ -50,6 +50,7 @@ struct RootView: View {
         } message: {
             Text(store.loadIssue ?? "")
         }
+        .background(WindowConfigurator())
         .id(store.settings.language)
     }
 }
