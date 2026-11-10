@@ -83,12 +83,11 @@ struct WindowConfigurator: NSViewRepresentable {
 }
 
 extension View {
-    /// Fond de l'écran prolongé sous la barre d'outils (même couleur, pas de bande distincte).
+    /// Fond de la colonne de droite, prolongé sous sa barre d'outils uniquement.
+    /// La barre latérale garde toute la hauteur de la fenêtre (comportement macOS standard) :
+    /// on ne peint surtout pas `.windowToolbar`, qui couvrirait aussi le haut de la barre latérale.
     func screenBackground() -> some View {
-        self
-            .background(Theme.canvas)
-            .toolbarBackground(Theme.canvas, for: .windowToolbar)
-            .toolbarBackground(.visible, for: .windowToolbar)
+        self.background(Theme.canvas.ignoresSafeArea())
     }
 }
 
