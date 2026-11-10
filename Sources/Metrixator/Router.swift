@@ -40,9 +40,9 @@ enum Theme {
         })
     }
 
-    /// Fond de fenêtre (gris très clair / quasi noir).
-    static let canvas = dynamic(light: NSColor(red: 0.949, green: 0.949, blue: 0.961, alpha: 1),
-                                dark: NSColor(white: 0.11, alpha: 1))
+    /// Fond des écrans : couleur de fenêtre du système, identique à ce que macOS dessine sous la
+    /// barre d'outils (aucune bande de couleur différente, quelle que soit la version de macOS).
+    static let canvas = Color(nsColor: .windowBackgroundColor)
     /// Fond des cartes (blanc / gris foncé).
     static let card = dynamic(light: .white, dark: NSColor(white: 0.18, alpha: 1))
     static let cardBorder = dynamic(light: NSColor(white: 0, alpha: 0.06), dark: NSColor(white: 1, alpha: 0.08))
@@ -102,13 +102,23 @@ struct SoftTopScrollEdge: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.scrollEdgeEffectStyle(.soft, for: .top)
+            content
+                .scrollEdgeEffectStyle(.soft, for: .top)
+                // Pas de fond propre à la barre d'outils : évite la bande qui déborde sur la barre latérale.
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         } else {
             content
         }
     }
     #else
-    func body(content: Content) -> some View { content }
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        } else {
+            content
+        }
+    }
     #endif
 }
 
