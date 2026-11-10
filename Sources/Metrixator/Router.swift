@@ -55,8 +55,16 @@ enum Theme {
     /// Marge gauche/droite du contenu, alignée sur le titre de la barre d'outils
     /// (le titre est placé plus près de la barre latérale à partir de macOS 26).
     static var contentInset: CGFloat {
-        if #available(macOS 26.0, *) { return 9 }
+        if #available(macOS 26.0, *) { return 9 - sidebarOverlap }
         return 12
+    }
+
+    /// macOS 26+ : la colonne de droite passe d'environ 3 pt sous le bord de la barre latérale.
+    /// On décale d'autant le contenu (et donc la bande opaque affichée sous la barre d'outils
+    /// au défilement) pour qu'il commence exactement au trait de séparation.
+    static var sidebarOverlap: CGFloat {
+        if #available(macOS 26.0, *) { return 3 }
+        return 0
     }
 
     static func color(_ c: MetricColor) -> Color {
@@ -95,8 +103,9 @@ extension View {
     /// on ne peint surtout pas `.windowToolbar`, qui couvrirait aussi le haut de la barre latérale.
     func screenBackground() -> some View {
         self
-            .background(Theme.canvas.ignoresSafeArea())
             .modifier(TopScrollEdge())
+            .padding(.leading, Theme.sidebarOverlap)
+            .background(Theme.canvas.ignoresSafeArea())
     }
 }
 
