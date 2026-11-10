@@ -87,8 +87,29 @@ extension View {
     /// La barre latérale garde toute la hauteur de la fenêtre (comportement macOS standard) :
     /// on ne peint surtout pas `.windowToolbar`, qui couvrirait aussi le haut de la barre latérale.
     func screenBackground() -> some View {
-        self.background(Theme.canvas.ignoresSafeArea())
+        self
+            .background(Theme.canvas.ignoresSafeArea())
+            .modifier(SoftTopScrollEdge())
     }
+}
+
+/// macOS 26 : par défaut, une vue défilante sous la barre d'outils reçoit un « scroll edge effect »
+/// dur (bande opaque de la couleur de fenêtre, à bord net, qui déborde sur la barre latérale).
+/// Le style doux fond le contenu sous la barre d'outils, sans bande d'une autre couleur.
+/// Compilé seulement avec le SDK macOS 26 (Xcode 26) ; sans effet sur les versions antérieures.
+struct SoftTopScrollEdge: ViewModifier {
+    #if compiler(>=6.2)
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            content
+        }
+    }
+    #else
+    func body(content: Content) -> some View { content }
+    #endif
 }
 
 /// Carte arrondie façon Numerics.

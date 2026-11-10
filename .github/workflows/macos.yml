@@ -69,3 +69,18 @@ jobs:
         with:
           name: Metrixator-app
           path: build/Metrixator.zip
+
+  # Vérifie la compilation avec Xcode 26 / SDK macOS 26 (branche `scrollEdgeEffectStyle`).
+  build-macos26:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versions
+        run: |
+          sw_vers
+          swift --version
+      - name: Tests et compilation
+        run: |
+          swift test
+          swift build -c release --product Metrixator
