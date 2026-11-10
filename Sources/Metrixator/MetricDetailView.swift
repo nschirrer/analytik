@@ -39,7 +39,7 @@ struct MetricDetailView: View {
                     chartCard(metric, reference: reference)
                     historyCard(metric)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, Theme.contentInset)
                 .padding(.top, 6)
                 .padding(.bottom, 24)
             }

@@ -52,6 +52,13 @@ enum Theme {
                                   dark: NSColor(red: 1.0, green: 0.42, blue: 0.38, alpha: 1))
     static let warning = Color.orange
 
+    /// Marge gauche/droite du contenu, alignée sur le titre de la barre d'outils
+    /// (le titre est placé plus près de la barre latérale à partir de macOS 26).
+    static var contentInset: CGFloat {
+        if #available(macOS 26.0, *) { return 9 }
+        return 12
+    }
+
     static func color(_ c: MetricColor) -> Color {
         let (r, g, b) = c.rgb
         return Color(red: r, green: g, blue: b)

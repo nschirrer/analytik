@@ -41,7 +41,7 @@ struct DashboardView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Theme.contentInset)
                     .padding(.top, 6)
                     .padding(.bottom, 20)
                 }

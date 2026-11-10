@@ -24,7 +24,7 @@ struct MetricListView: View {
                             "\(store.metrics.count) results — drag to reorder the dashboard"))
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Theme.contentInset)
                         .padding(.top, 6)
                         .padding(.bottom, 4)
                     List {
