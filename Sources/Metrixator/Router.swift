@@ -55,16 +55,8 @@ enum Theme {
     /// Marge gauche/droite du contenu, alignée sur le titre de la barre d'outils
     /// (le titre est placé plus près de la barre latérale à partir de macOS 26).
     static var contentInset: CGFloat {
-        if #available(macOS 26.0, *) { return 9 - sidebarOverlap }
+        if #available(macOS 26.0, *) { return 9 }
         return 12
-    }
-
-    /// macOS 26+ : la colonne de droite passe d'environ 3 pt sous le bord de la barre latérale.
-    /// On décale d'autant le contenu (et donc la bande opaque affichée sous la barre d'outils
-    /// au défilement) pour qu'il commence exactement au trait de séparation.
-    static var sidebarOverlap: CGFloat {
-        if #available(macOS 26.0, *) { return 3 }
-        return 0
     }
 
     static func color(_ c: MetricColor) -> Color {
@@ -104,27 +96,37 @@ extension View {
     func screenBackground() -> some View {
         self
             .modifier(TopScrollEdge())
-            .padding(.leading, Theme.sidebarOverlap)
+            // 1 pt d'écart avec le haut : la vue défilante ne touche plus la barre d'outils, donc
+            // macOS ne la prolonge plus dessous. Le contenu disparaît net au bord de la barre.
+            .padding(.top, 1)
+            .clipped()
             .background(Theme.canvas.ignoresSafeArea())
     }
 }
 
-/// macOS 26 et suivants : effet de bord de défilement « dur » du système. Dès que le contenu
-/// passe sous la barre d'outils, celle-ci reçoit un fond opaque (couleur de fenêtre) et le contenu
-/// disparaît entièrement dessous. Au repos, ce fond a la couleur de l'écran (`Theme.canvas`) : invisible.
-/// Compilé seulement avec le SDK macOS 26 ou plus récent ; macOS 14/15 gardent leur comportement standard.
+/// macOS 26 et suivants : rien ne défile sous la barre d'outils (voir `screenBackground`), donc
+/// ni fond propre à la barre d'outils (il débordait sur la barre latérale), ni effet de bord de défilement.
 struct TopScrollEdge: ViewModifier {
     #if compiler(>=6.2)
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.scrollEdgeEffectStyle(.hard, for: .top)
+            content
+                .scrollEdgeEffectHidden(true, for: .top)
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         } else {
             content
         }
     }
     #else
-    func body(content: Content) -> some View { content }
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        } else {
+            content
+        }
+    }
     #endif
 }
 
