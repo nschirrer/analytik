@@ -96,62 +96,26 @@ extension View {
     func screenBackground() -> some View {
         self
             .background(Theme.canvas.ignoresSafeArea())
-            .overlay(TopFade())
-            .modifier(SoftTopScrollEdge())
+            .modifier(TopScrollEdge())
     }
 }
 
-/// Masque la zone de la barre d'outils de la colonne de droite : opaque (couleur de fenêtre),
-/// avec un dégradé sur ses derniers points. Le contenu qui défile vers le haut s'efface
-/// entièrement avant d'atteindre les boutons. Invisible au repos (même couleur que le fond),
-/// sans effet sur la barre latérale, et transparent aux clics.
-struct TopFade: View {
-    /// Hauteur du dégradé, prise en bas de la zone de la barre d'outils.
-    var fadeHeight: CGFloat = 14
-
-    var body: some View {
-        GeometryReader { geo in
-            let top = geo.safeAreaInsets.top
-            VStack(spacing: 0) {
-                Theme.canvas
-                    .frame(height: max(0, top - fadeHeight))
-                LinearGradient(colors: [Theme.canvas, Theme.canvas.opacity(0)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: min(fadeHeight, top))
-                Spacer(minLength: 0)
-            }
-        }
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
-
-/// macOS 26 : par défaut, une vue défilante sous la barre d'outils reçoit un « scroll edge effect »
-/// dur (bande opaque de la couleur de fenêtre, à bord net, qui déborde sur la barre latérale).
-/// Le style doux fond le contenu sous la barre d'outils, sans bande d'une autre couleur.
-/// Compilé seulement avec le SDK macOS 26 (Xcode 26) ; sans effet sur les versions antérieures.
-struct SoftTopScrollEdge: ViewModifier {
+/// macOS 26 et suivants : effet de bord de défilement « dur » du système. Dès que le contenu
+/// passe sous la barre d'outils, celle-ci reçoit un fond opaque (couleur de fenêtre) et le contenu
+/// disparaît entièrement dessous. Au repos, ce fond a la couleur de l'écran (`Theme.canvas`) : invisible.
+/// Compilé seulement avec le SDK macOS 26 ou plus récent ; macOS 14/15 gardent leur comportement standard.
+struct TopScrollEdge: ViewModifier {
     #if compiler(>=6.2)
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content
-                .scrollEdgeEffectStyle(.soft, for: .top)
-                // Pas de fond propre à la barre d'outils : évite la bande qui déborde sur la barre latérale.
-                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+            content.scrollEdgeEffectStyle(.hard, for: .top)
         } else {
             content
         }
     }
     #else
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            content.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-        } else {
-            content
-        }
-    }
+    func body(content: Content) -> some View { content }
     #endif
 }
 
