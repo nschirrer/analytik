@@ -96,7 +96,33 @@ extension View {
     func screenBackground() -> some View {
         self
             .background(Theme.canvas.ignoresSafeArea())
+            .overlay(TopFade())
             .modifier(SoftTopScrollEdge())
+    }
+}
+
+/// Masque la zone de la barre d'outils de la colonne de droite : opaque (couleur de fenêtre),
+/// avec un dégradé sur ses derniers points. Le contenu qui défile vers le haut s'efface
+/// entièrement avant d'atteindre les boutons. Invisible au repos (même couleur que le fond),
+/// sans effet sur la barre latérale, et transparent aux clics.
+struct TopFade: View {
+    /// Hauteur du dégradé, prise en bas de la zone de la barre d'outils.
+    var fadeHeight: CGFloat = 14
+
+    var body: some View {
+        GeometryReader { geo in
+            let top = geo.safeAreaInsets.top
+            VStack(spacing: 0) {
+                Theme.canvas
+                    .frame(height: max(0, top - fadeHeight))
+                LinearGradient(colors: [Theme.canvas, Theme.canvas.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: min(fadeHeight, top))
+                Spacer(minLength: 0)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 
